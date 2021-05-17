@@ -1,0 +1,81 @@
+module router_fifo_tb;
+reg clock, resetn,write_enb,read_enb,lfd_state,soft_reset;
+reg [7:0] data_in;
+wire full,empty;
+wire [7:0] data_out;
+integer i;
+
+router_fifo dut (clock,resetn,write_enb,read_enb,soft_reset,lfd_state,data_in,full,empty,data_out);
+
+initial
+begin
+   clock=0;
+forever#5 clock=~clock;
+end
+
+//==========================================RESET TASK======================================================
+task rst_t;
+  begin
+      @(negedge clock);
+	 resetn=1'b0;
+      @(negedge clock);
+	 resetn=1'b1;
+  end  
+endtask
+
+//==========================================SOFT RESET TASK================================================= 
+task rst_s;
+  begin
+      @(negedge clock);
+	 soft_reset=1'b1;
+      @(negedge clock);
+	 soft_reset=1'b0;
+  end
+   
+endtask
+
+//==========================================PKT GENERATION TASK================================================= 
+task pkt_gen;
+  reg[7:0]payload_data,parity,header;
+  reg[5:0]payload_length;
+  reg[1:0]addr;
+begin
+    lfd_state=1'b1;
+  @(negedge clock);
+    payload_length=6'd4;
+              addr=2'b01;
+            lfd_state=0;
+            header={payload_length,addr};
+           data_in=header;
+      @(negedge clock);     
+           write_enb=1'b1;
+     for(i=0;i<payload_length;i=i+1)
+      begin
+        @(negedge clock);
+             
+          
+         payload_data={$random}%256;
+            data_in=payload_data;
+      end
+        @(negedge clock);
+            parity={$random}%256;
+            data_in=parity;
+end
+endtask
+
+//=================================================TEST=====================================================
+initial
+  begin
+        rst_t;
+        rst_s;
+        pkt_gen;
+       @(negedge clock);
+         read_enb=1;
+        #200;
+        $finish;
+end
+
+/*initial
+$monitor($time,"clock=%b,resetn=%b,write_enb=%b,read_enb=%b,lfd_state=%b,soft_reset=%b,data_in=%b,full==%b,
+empty=%b,data_out=%b",clock,resetn,write_enb,read_enb,soft_reset,lfd_state,data_in,full,empty,data_out);*/
+endmodule

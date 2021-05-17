@@ -1,0 +1,38 @@
+module router_top(input clock,resetn,read_enb_0,read_enb_1,read_enb_2,pkt_valid,
+                  input[7:0]data_in,
+                  output [7:0]data_out_0,data_out_1,data_out_2,
+                  output  valid_out_0,valid_out_1,valid_out_2,err,busy);
+
+wire w1,w2,w3,w4,w5,w6,w7,w8,w9,w10,w11,w12,w13,w14,w15,w16,w17,w18,w19;
+wire[2:0]w20;
+wire[7:0]w23;
+
+//================================================FSM INSTANTIATION======================================================
+router_fsm FSM(.clock(clock),.resetn(resetn),.data_in(data_in[1:0]),.pkt_valid(pkt_valid),.parity_done(w1),.
+               soft_reset_0(w2),.soft_reset_1(w3),.soft_reset_2(w4),.fifo_full(w5),.low_pkt_valid(w6),.
+               fifo_empty_0(w7),.fifo_empty_1(w8),.fifo_empty_2(w9),.busy(busy),.detect_add(w10),.
+               ld_state(w11),.laf_state(w12),.full_state(w13),.write_enb_reg(w14),.rst_int_reg(w15),.lfd_state(w16));
+
+//================================================SYNCHRONIZER INSTANTIATION==============================================
+router_sync SYNC(.detect_add(w10),.data_in(data_in[1:0]),.write_enb_reg(w14),.clock(clock),.resetn(resetn),.
+                read_enb_0(read_enb_0),.read_enb_1(read_enb_1),.read_enb_2(read_enb_2),.vld_out_0(valid_out_0),.
+                vld_out_1(valid_out_1),.vld_out_2(valid_out_2),.fifo_full(w5),.empty_0(w7),.empty_1(w8),.
+                empty_2(w9),.soft_reset_0(w2),.soft_reset_1(w3),.soft_reset_2(w4),.full_0(w17),.
+                full_1(w18),.full_2(w19),.write_enb(w20));
+
+//================================================REGISTER INSTANTIATION===================================================
+router_reg REG(.clock(clock),.resetn(resetn),.pkt_valid(pkt_valid),.fifo_full(w5),.rst_int_reg(w15),.
+               detect_add(w10),.ld_state(w11),.laf_state(w12),.full_state(w13),.lfd_state(w16),.
+               parity_done(w1),.low_pkt_valid(w6),.err(err),.data_in(data_in),.dout(w23));
+               
+//================================================FIFO INSTANTIATION======================================================
+router_fifo F1(.clock(clock),.resetn(resetn),.write_enb(w20[0]),.soft_reset(w2),.read_enb(read_enb_0),
+                .data_in(w23),.lfd_state(w16),.empty(w7),.data_out(data_out_0),.full(w17));  
+
+router_fifo F2(.clock(clock),.resetn(resetn),.write_enb(w20[1]),.soft_reset(w3),.read_enb(read_enb_1),
+                .data_in(w23),.lfd_state(w16),.empty(w8),.data_out(data_out_1),.full(w18));  
+
+router_fifo F3(.clock(clock),.resetn(resetn),.write_enb(w20[2]),.soft_reset(w4),.read_enb(read_enb_2),
+                .data_in(w23),.lfd_state(w16),.empty(w9),.data_out(data_out_2),.full(w19)); 
+
+endmodule                

@@ -1,0 +1,90 @@
+module router_fifo(input clock,resetn,write_enb,read_enb,soft_reset,lfd_state,
+                   input[7:0]data_in,
+                   output  full,empty,
+                   output reg[7:0]data_out);
+
+reg[4:0]wr_ptr,rd_ptr;
+integer i;
+reg header;
+reg[5:0] count;
+
+reg[8:0]mem[15:0];
+
+//============================================WRITE OPERATION LOGIC================================================
+always@(posedge clock)
+begin
+   if(~resetn ||soft_reset)
+     begin
+       for
+         (i=0;i<16;i=i+1)
+       begin
+         mem[i]<=0;
+       end
+     end
+   else if (lfd_state)
+         mem[wr_ptr[3:0]]<=9'b100000000;
+   else if(write_enb && !full)
+     begin
+       if (mem[wr_ptr[3:0]]==9'b100000000)
+         mem[wr_ptr[3:0]]<={1'b1,data_in};
+       else
+         mem[wr_ptr[3:0]]<={1'b0,data_in};  
+     end
+end
+
+//=============================================READ OPERATION LOGIC================================================
+always@(posedge clock)
+begin
+    if(~resetn )
+      data_out<=0;
+    
+    else if (soft_reset)
+     data_out<=8'bz;
+  
+    else if(read_enb && !empty)
+       {header,data_out}<=mem[rd_ptr[3:0]];
+
+    else if (!count)
+        data_out<=8'bz;
+    
+end
+
+//============================================WRITE POINTER LOGIC==================================================
+always@(posedge clock)
+begin
+   if(~resetn ||soft_reset)
+     begin
+      wr_ptr<=0;
+     end
+   else if(write_enb && !full)
+      wr_ptr<=wr_ptr+1;
+end
+
+//=============================================READ POINTER LOGIC==================================================
+always@(posedge clock)
+begin
+   if(~resetn ||soft_reset)
+     begin
+      rd_ptr<=0;
+     end
+   else if(read_enb && !empty)
+      rd_ptr<=rd_ptr+1;
+end
+
+//============================================COUNTER LOGIC(PAYLOAD LENGTH)==========================================
+always@(posedge clock)
+begin
+   if(header)
+     count<=data_out[7:2]+1'b1;
+   else if (!count)
+     count<=0;
+   else
+     count<= count-1;
+end
+
+//============================================FULL & EMPTY LOGIC======================================================
+assign full=(rd_ptr=={(!wr_ptr[4]),wr_ptr[3:0]});
+assign empty=(rd_ptr==wr_ptr);
+
+endmodule
+
